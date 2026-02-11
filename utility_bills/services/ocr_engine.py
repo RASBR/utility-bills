@@ -28,7 +28,7 @@ def ocr_images_tesseract(image_paths: Iterable[str], lang: str = "ara+eng", psm:
     try:
         import pytesseract  # type: ignore
         from PIL import Image  # type: ignore
-    except Exception as e:
+    except ImportError as e:
         raise OcrEngineError("Tesseract OCR requested but dependencies are missing. Install optional extra: ocr_tesseract") from e
 
     parts = []
@@ -48,7 +48,7 @@ def ocr_images_paddle(image_paths: Iterable[str], lang: str = "ar") -> OcrResult
     """
     try:
         from paddleocr import PaddleOCR  # type: ignore
-    except Exception as e:
+    except ImportError as e:
         raise OcrEngineError("PaddleOCR requested but dependency is missing. Install optional extra: ocr_paddle") from e
 
     # PaddleOCR language codes: 'ar' for Arabic, 'en' for English.

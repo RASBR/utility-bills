@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import decimal
 from decimal import Decimal
 from typing import Optional
 
@@ -24,5 +25,5 @@ def parse_decimal_maybe(value: str) -> Optional[Decimal]:
         return None
     try:
         return Decimal(v)
-    except Exception:
+    except (ValueError, decimal.InvalidOperation):
         return None
