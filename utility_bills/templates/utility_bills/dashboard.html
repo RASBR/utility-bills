@@ -40,6 +40,42 @@
   </div>
 </div>
 
+<!-- Electricity Analytics -->
+{% if total_import_kwh or total_export_kwh %}
+<div class="grid">
+  <div class="card col-4">
+    <div class="muted">Total Import ({{ year }})</div>
+    <div style="font-size:24px; font-weight:700">{{ total_import_kwh }} kWh</div>
+  </div>
+  <div class="card col-4">
+    <div class="muted">Total Export ({{ year }})</div>
+    <div style="font-size:24px; font-weight:700">{{ total_export_kwh }} kWh</div>
+  </div>
+  <div class="card col-4">
+    <div class="muted">Net Consumption ({{ year }})</div>
+    <div style="font-size:24px; font-weight:700">{{ total_net_kwh }} kWh</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card col-4">
+    <div class="muted">Self-Consumption Ratio</div>
+    <div style="font-size:24px; font-weight:700">{% if self_consumption_ratio != None %}{{ self_consumption_ratio }}%{% else %}N/A{% endif %}</div>
+    <div class="muted" style="font-size:12px;">Portion of energy used on-site</div>
+  </div>
+  <div class="card col-4">
+    <div class="muted">Grid Dependency</div>
+    <div style="font-size:24px; font-weight:700">{% if grid_dependency_ratio != None %}{{ grid_dependency_ratio }}%{% else %}N/A{% endif %}</div>
+    <div class="muted" style="font-size:12px;">Net consumption vs total import</div>
+  </div>
+  <div class="card col-4">
+    <div class="muted">Est. Solar Savings ({{ year }})</div>
+    <div style="font-size:24px; font-weight:700">{{ estimated_solar_savings }} JOD</div>
+    <div class="muted" style="font-size:12px;">Based on export @ 0.070 JOD/kWh</div>
+  </div>
+</div>
+{% endif %}
+
 <div class="card">
   <h3 style="margin-top:0">Charts</h3>
   <canvas id="chartAmount" height="90"></canvas>

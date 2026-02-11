@@ -40,6 +40,10 @@ def _year_default() -> int:
     return date.today().year
 
 
+# Configurable constants for solar savings estimation
+SOLAR_EXPORT_RATE_JOD_PER_KWH = Decimal("0.070")  # Estimated value per exported kWh
+
+
 @login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
     form = DashboardFilterForm(request.GET or None)
@@ -60,24 +64,59 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     total_spent = qs.aggregate(s=Sum("total_amount"))["s"] or Decimal("0.000")
 
     # Chart: monthly totals (simple)
-    monthly = []
+    monthly: list[float] = []
     for m in range(1, 13):
         msum = qs.filter(period_end__month=m).aggregate(s=Sum("total_amount"))["s"] or Decimal("0.000")
         monthly.append(float(msum))
 
     # Chart: electricity net kWh by month (if present)
-    elec_net = [0] * 12
-    elec_import = [0] * 12
-    elec_export = [0] * 12
-    elec_billed = [0] * 12
-    elec_bills = ElectricityBill.objects.filter(bill__in=qs.filter(utility_type=UtilityType.ELECTRICITY)).select_related("bill")
+    elec_net: list[int] = [0] * 12
+    elec_import: list[int] = [0] * 12
+    elec_export: list[int] = [0] * 12
+    elec_billed: list[int] = [0] * 12
+
+    # Yearly totals for ratios
+    total_import_kwh = 0
+    total_export_kwh = 0
+    total_net_kwh = 0
+
+    elec_bills = ElectricityBill.objects.filter(
+        bill__in=qs.filter(utility_type=UtilityType.ELECTRICITY)
+    ).select_related("bill")
+
     for eb in elec_bills:
         idx = eb.bill.period_end.month - 1
         elec_import[idx] += eb.import_kwh
         elec_export[idx] += eb.export_kwh
         elec_net[idx] += eb.net_kwh
+
+        total_import_kwh += eb.import_kwh
+        total_export_kwh += eb.export_kwh
+        total_net_kwh += eb.net_kwh
+
         if eb.billed_kwh is not None:
             elec_billed[idx] += int(eb.billed_kwh)
+
+    # Calculate solar/consumption analytics
+    # Self-consumption ratio: portion of generated solar used on-site
+    # = (total_export_kwh / estimated_generation) but we don't have generation
+    # Instead, we compute: export_kwh / import_kwh as "export ratio"
+    # Grid dependency ratio: net_kwh / import_kwh (lower is better for solar users)
+    self_consumption_ratio: float | None = None
+    grid_dependency_ratio: float | None = None
+    estimated_solar_savings = Decimal("0.000")
+
+    if total_import_kwh > 0:
+        # Export ratio (how much of what we could have used did we export)
+        self_consumption_ratio = round(
+            (1 - (total_export_kwh / total_import_kwh)) * 100, 1
+        ) if total_export_kwh > 0 else 100.0
+
+        # Grid dependency (what portion of consumption came from grid)
+        grid_dependency_ratio = round((total_net_kwh / total_import_kwh) * 100, 1)
+
+    # Estimated solar savings = export_kwh * rate
+    estimated_solar_savings = Decimal(total_export_kwh) * SOLAR_EXPORT_RATE_JOD_PER_KWH
 
     chart_payload = {
         "labels": [f"{year}-{m:02d}" for m in range(1, 13)],
@@ -103,6 +142,13 @@ def dashboard(request: HttpRequest) -> HttpResponse:
             "latest_bills": latest_bills,
             "chart_payload_json": json.dumps(chart_payload),
             "year": year,
+            # New analytics
+            "total_import_kwh": total_import_kwh,
+            "total_export_kwh": total_export_kwh,
+            "total_net_kwh": total_net_kwh,
+            "self_consumption_ratio": self_consumption_ratio,
+            "grid_dependency_ratio": grid_dependency_ratio,
+            "estimated_solar_savings": estimated_solar_savings,
         },
     )
 
