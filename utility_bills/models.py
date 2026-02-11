@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -85,10 +86,12 @@ class UtilityBill(models.Model):
             models.CheckConstraint(condition=models.Q(total_amount__gte=Decimal("-999999999.999")), name="ub_total_amount_reasonable"),
         ]
 
-    def clean(self):
-        # Keep utility_type consistent with meter
+    def clean(self) -> None:
+        """Validate utility_type matches meter's utility_type."""
         if self.meter_id and self.utility_type and self.meter.utility_type != self.utility_type:
-            raise ValueError("UtilityBill.utility_type must match UtilityMeter.utility_type")
+            raise ValidationError(
+                {"utility_type": "UtilityBill.utility_type must match UtilityMeter.utility_type"}
+            )
 
     def __str__(self) -> str:
         return f"{self.utility_type}:{self.meter.meter_number}:{self.period_start}->{self.period_end}"
@@ -115,6 +118,22 @@ class ElectricityBill(models.Model):
             models.Index(fields=["billed_kwh"]),
         ]
 
+    def clean(self) -> None:
+        """Validate meter readings are consistent."""
+        errors: dict[str, str] = {}
+
+        # import_current must be >= import_previous
+        if self.import_current < self.import_previous:
+            errors["import_current"] = "Import current reading must be >= import previous reading."
+
+        # export_current must be >= export_previous if both are set
+        if self.export_current is not None and self.export_previous is not None:
+            if self.export_current < self.export_previous:
+                errors["export_current"] = "Export current reading must be >= export previous reading."
+
+        if errors:
+            raise ValidationError(errors)
+
     @property
     def import_kwh(self) -> int:
         return int(self.import_current) - int(self.import_previous)
@@ -128,6 +147,13 @@ class ElectricityBill(models.Model):
     @property
     def net_kwh(self) -> int:
         return self.import_kwh - self.export_kwh
+
+    @property
+    def billed_kwh_mismatch(self) -> bool:
+        """Check if billed_kwh differs from computed net_kwh (potential data issue)."""
+        if self.billed_kwh is None:
+            return False
+        return self.billed_kwh != self.net_kwh
 
     def __str__(self) -> str:
         return f"ElectricityBill({self.bill_id})"
@@ -144,6 +170,13 @@ class WaterBill(models.Model):
         indexes = [
             models.Index(fields=["billed_m3"]),
         ]
+
+    def clean(self) -> None:
+        """Validate water meter readings are consistent."""
+        if self.current_reading < self.previous_reading:
+            raise ValidationError(
+                {"current_reading": "Current reading must be >= previous reading."}
+            )
 
     @property
     def consumption_m3(self) -> int:
