@@ -1,0 +1,34 @@
+{% extends "utility_bills/base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin:0">OCR result</h2>
+  <p class="muted">Engine: {{ engine }} • Layout: {{ layout }}</p>
+  <a class="btn secondary" href="{% url 'utility_bills:ocr_upload' %}">Back</a>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Parsed preview (electricity)</h3>
+  {% if parsed %}
+  <table>
+    <tbody>
+      <tr><th>Meter</th><td>{{ parsed.meter_number|default:"-" }}</td></tr>
+      <tr><th>Period start</th><td>{{ parsed.period_start|default:"-" }}</td></tr>
+      <tr><th>Period end</th><td>{{ parsed.period_end|default:"-" }}</td></tr>
+      <tr><th>Import prev</th><td>{{ parsed.import_previous|default:"-" }}</td></tr>
+      <tr><th>Import cur</th><td>{{ parsed.import_current|default:"-" }}</td></tr>
+      <tr><th>Export prev</th><td>{{ parsed.export_previous|default:"-" }}</td></tr>
+      <tr><th>Export cur</th><td>{{ parsed.export_current|default:"-" }}</td></tr>
+      <tr><th>Billed kWh</th><td>{{ parsed.billed_kwh|default:"-" }}</td></tr>
+      <tr><th>Total bill value</th><td>{{ parsed.total_bill_value|default:"-" }}</td></tr>
+    </tbody>
+  </table>
+  {% else %}
+  <div class="muted">No parser wired for this utility/layout yet.</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Raw OCR text</h3>
+  <pre>{{ ocr_text }}</pre>
+</div>
+{% endblock %}

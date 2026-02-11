@@ -1,0 +1,18 @@
+{% extends "utility_bills/base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin:0">OCR upload (multi-image)</h2>
+  <p class="muted">Upload one or multiple images. OCR text and a quick parsed preview will be shown.</p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row">
+      <div><label>Utility</label>{{ form.utility_type }}</div>
+      <div><label>Engine</label>{{ form.engine }}</div>
+      <div class="col-12"><label>Images</label>{{ form.images }}</div>
+    </div>
+    <div style="height:10px"></div>
+    <button class="btn" type="submit">Run OCR</button>
+  </form>
+</div>
+{% endblock %}

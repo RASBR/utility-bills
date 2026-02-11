@@ -1,0 +1,35 @@
+{% extends "utility_bills/base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin:0">Meters</h2>
+  <p class="muted">Each user owns their meters. Stats are filtered by logged-in user.</p>
+  <a class="btn" href="{% url 'utility_bills:meter_add' %}">Add meter</a>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Utility</th>
+        <th>Meter number</th>
+        <th>Nickname</th>
+        <th>Active</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in meters %}
+      <tr>
+        <td>{{ m.id }}</td>
+        <td>{{ m.utility_type }}</td>
+        <td>{{ m.meter_number }}</td>
+        <td>{{ m.nickname }}</td>
+        <td>{{ m.is_active }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No meters added yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

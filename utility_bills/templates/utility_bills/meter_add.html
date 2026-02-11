@@ -1,0 +1,18 @@
+{% extends "utility_bills/base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin:0">Add meter</h2>
+  <form method="post">
+    {% csrf_token %}
+    <div class="row">
+      <div><label>Utility</label>{{ form.utility_type }}</div>
+      <div><label>Meter number</label>{{ form.meter_number }}</div>
+      <div><label>Nickname</label>{{ form.nickname }}</div>
+      <div><label>Location note</label>{{ form.location_note }}</div>
+      <div><label>Active</label>{{ form.is_active }}</div>
+    </div>
+    <div style="height:10px"></div>
+    <button class="btn" type="submit">Save</button>
+  </form>
+</div>
+{% endblock %}

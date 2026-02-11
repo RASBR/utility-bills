@@ -1,0 +1,117 @@
+{% extends "utility_bills/base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin:0">Dashboard</h2>
+  <p class="muted" style="margin-top:6px">Stats per utility / meter / month / year.</p>
+  <form method="get">
+    <div class="row">
+      <div>
+        <label>Utility</label>
+        {{ form.utility_type }}
+      </div>
+      <div>
+        <label>Year</label>
+        {{ form.year }}
+      </div>
+      <div>
+        <label>Meter ID (optional)</label>
+        {{ form.meter_id }}
+      </div>
+      <div style="display:flex; align-items:end; gap:8px">
+        <button class="btn" type="submit">Apply</button>
+        <a class="btn secondary" href="{% url 'utility_bills:dashboard' %}">Reset</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="grid">
+  <div class="card col-4">
+    <div class="muted">Total spent ({{ year }})</div>
+    <div style="font-size:24px; font-weight:700">{{ total_spent }} JOD</div>
+  </div>
+  <div class="card col-4">
+    <div class="muted">Active meters</div>
+    <div style="font-size:24px; font-weight:700">{{ meters|length }}</div>
+  </div>
+  <div class="card col-4">
+    <div class="muted">Recent bills</div>
+    <div style="font-size:24px; font-weight:700">{{ latest_bills|length }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Charts</h3>
+  <canvas id="chartAmount" height="90"></canvas>
+  <div style="height:12px"></div>
+  <canvas id="chartEnergy" height="90"></canvas>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Latest bills</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Period end</th>
+        <th>Utility</th>
+        <th>Meter</th>
+        <th>Total</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in latest_bills %}
+      <tr>
+        <td>{{ b.period_end }}</td>
+        <td>{{ b.utility_type }}</td>
+        <td>{{ b.meter.meter_number }}</td>
+        <td>{{ b.total_amount }} {{ b.currency }}</td>
+        <td><a href="{% url 'utility_bills:bill_detail' b.id %}">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No bills yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const payload = {{ chart_payload_json|safe }};
+  const labels = payload.labels;
+
+  new Chart(document.getElementById('chartAmount'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Total Amount (JOD)',
+        data: payload.monthly_total_amount
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: true } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  new Chart(document.getElementById('chartEnergy'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Import kWh', data: payload.electricity_import_kwh },
+        { label: 'Export kWh', data: payload.electricity_export_kwh },
+        { label: 'Net kWh', data: payload.electricity_net_kwh },
+        { label: 'Billed kWh', data: payload.electricity_billed_kwh }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: true } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+</script>
+{% endblock %}

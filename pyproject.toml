@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "utility-bills"
+version = "0.1.0"
+description = "Reusable Django app for utility bills (electricity with solar/net-metering + water) with OCR ingestion and dashboards."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "RASBR"}]
+dependencies = [
+  "Django>=4.2",
+  "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+ocr_tesseract = ["pytesseract>=0.3.10"]
+ocr_paddle = ["paddleocr>=2.7.0"]
+charts = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["utility_bills*"]

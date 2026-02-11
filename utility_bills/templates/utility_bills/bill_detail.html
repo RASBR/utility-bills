@@ -1,0 +1,63 @@
+{% extends "utility_bills/base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin:0">Bill detail</h2>
+  <p class="muted" style="margin-top:6px">
+    {{ bill.utility_type }} • Meter {{ bill.meter.meter_number }} • {{ bill.period_start }} → {{ bill.period_end }}
+  </p>
+</div>
+
+<div class="grid">
+  <div class="card col-6">
+    <div class="muted">Total</div>
+    <div style="font-size:24px; font-weight:700">{{ bill.total_amount }} {{ bill.currency }}</div>
+    <div class="muted" style="margin-top:6px">Data source: {{ bill.data_source }}</div>
+    {% if bill.needs_review %}<div style="margin-top:6px; color:#b45309">Needs review</div>{% endif %}
+  </div>
+  <div class="card col-6">
+    <div class="muted">Dates</div>
+    <div>Issue: {{ bill.issue_date|default:"-" }}</div>
+    <div>Reading: {{ bill.reading_date|default:"-" }}</div>
+    <div>Payment: {{ bill.payment_date|default:"-" }}</div>
+  </div>
+</div>
+
+{% if bill.utility_type == "electricity" and bill.electricity %}
+<div class="card">
+  <h3 style="margin-top:0">Electricity (solar / net-metering)</h3>
+  <table>
+    <tbody>
+      <tr><th>Imported previous</th><td>{{ bill.electricity.import_previous }}</td></tr>
+      <tr><th>Imported current</th><td>{{ bill.electricity.import_current }}</td></tr>
+      <tr><th>Imported kWh</th><td>{{ bill.electricity.import_kwh }}</td></tr>
+      <tr><th>Exported previous</th><td>{{ bill.electricity.export_previous|default:"-" }}</td></tr>
+      <tr><th>Exported current</th><td>{{ bill.electricity.export_current|default:"-" }}</td></tr>
+      <tr><th>Exported kWh</th><td>{{ bill.electricity.export_kwh }}</td></tr>
+      <tr><th>Net kWh</th><td>{{ bill.electricity.net_kwh }}</td></tr>
+      <tr><th>Billed kWh</th><td>{{ bill.electricity.billed_kwh|default:"-" }}</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if bill.utility_type == "water" and bill.water %}
+<div class="card">
+  <h3 style="margin-top:0">Water</h3>
+  <table>
+    <tbody>
+      <tr><th>Previous</th><td>{{ bill.water.previous_reading }}</td></tr>
+      <tr><th>Current</th><td>{{ bill.water.current_reading }}</td></tr>
+      <tr><th>Consumption (m³)</th><td>{{ bill.water.consumption_m3 }}</td></tr>
+      <tr><th>Billed m³</th><td>{{ bill.water.billed_m3|default:"-" }}</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if bill.raw_ocr_text %}
+<div class="card">
+  <h3 style="margin-top:0">Raw OCR text</h3>
+  <pre>{{ bill.raw_ocr_text }}</pre>
+</div>
+{% endif %}
+{% endblock %}
