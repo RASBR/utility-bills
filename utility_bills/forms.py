@@ -92,10 +92,22 @@ class WaterManualBillForm(forms.Form):
         return cleaned
 
 
+class MultipleFileInput(forms.FileInput):
+    """Custom widget that allows multiple file selection."""
+
+    allow_multiple_selected = True
+
+    def __init__(self, attrs: dict[str, Any] | None = None) -> None:
+        default_attrs = {"multiple": True}
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(attrs=default_attrs)
+
+
 class OcrUploadForm(forms.Form):
     utility_type = forms.ChoiceField(choices=UtilityType.choices)
     engine = forms.ChoiceField(choices=[("tesseract", "Tesseract"), ("paddleocr", "PaddleOCR")])
-    images = forms.FileField(widget=forms.ClearableFileInput(attrs={"multiple": True}))
+    images = forms.FileField(widget=MultipleFileInput(attrs={"accept": "image/*"}))
 
 
 class OcrConfirmElectricityForm(forms.Form):

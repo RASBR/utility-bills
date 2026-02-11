@@ -1,0 +1,3 @@
+# Example project local files
+db.sqlite3
+staticfiles/
