@@ -13,4 +13,5 @@ urlpatterns = [
     path("bills/add/", views.bill_add, name="bill_add"),
     path("bills/<int:bill_id>/", views.bill_detail, name="bill_detail"),
     path("ocr/upload/", views.ocr_upload, name="ocr_upload"),
+    path("ocr/save/", views.ocr_save, name="ocr_save"),
 ]

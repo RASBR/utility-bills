@@ -6,9 +6,120 @@
   <a class="btn secondary" href="{% url 'utility_bills:ocr_upload' %}">Back</a>
 </div>
 
+{% if meter_error %}
+<div class="card" style="background:#fef2f2;border:1px solid #ef4444;">
+  <strong style="color:#dc2626;">Error:</strong> {{ meter_error }}
+  <p style="margin:8px 0 0 0;color:#6b7280;">
+    <a href="{% url 'utility_bills:meter_add' %}">Add a new meter</a> and try again.
+  </p>
+</div>
+{% endif %}
+
+{% if errors %}
+<div class="card" style="background:#fef2f2;border:1px solid #ef4444;">
+  <strong style="color:#dc2626;">Validation errors:</strong>
+  <ul style="margin:8px 0 0 0;">
+    {% for field, field_errors in errors.items %}
+      {% for error in field_errors %}
+        <li>{{ field }}: {{ error }}</li>
+      {% endfor %}
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if confirm_form %}
+<div class="card">
+  <h3 style="margin-top:0">Confirm & Save Electricity Bill</h3>
+  <form method="post" action="{% url 'utility_bills:ocr_save' %}">
+    {% csrf_token %}
+    
+    <div class="row">
+      <div>
+        <label>Meter Number</label>
+        <input type="text" name="meter_number" value="{{ confirm_form.meter_number.value|default:'' }}" required>
+      </div>
+      <div>
+        <label>Reading Date</label>
+        <input type="date" name="reading_date" value="{{ confirm_form.reading_date.value|default:'' }}">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Period Start</label>
+        <input type="date" name="period_start" value="{{ confirm_form.period_start.value|default:'' }}" required>
+      </div>
+      <div>
+        <label>Period End</label>
+        <input type="date" name="period_end" value="{{ confirm_form.period_end.value|default:'' }}" required>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Import Previous</label>
+        <input type="number" name="import_previous" value="{{ confirm_form.import_previous.value|default:'' }}" required min="0">
+      </div>
+      <div>
+        <label>Import Current</label>
+        <input type="number" name="import_current" value="{{ confirm_form.import_current.value|default:'' }}" required min="0">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Export Previous</label>
+        <input type="number" name="export_previous" value="{{ confirm_form.export_previous.value|default:'' }}" min="0">
+      </div>
+      <div>
+        <label>Export Current</label>
+        <input type="number" name="export_current" value="{{ confirm_form.export_current.value|default:'' }}" min="0">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Billed kWh</label>
+        <input type="number" name="billed_kwh" value="{{ confirm_form.billed_kwh.value|default:'' }}">
+      </div>
+      <div>
+        <label>Total Amount (JOD)</label>
+        <input type="text" name="total_amount" value="{{ confirm_form.total_amount.value|default:'' }}">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Consumption Value</label>
+        <input type="text" name="consumption_value" value="{{ confirm_form.consumption_value.value|default:'' }}">
+      </div>
+      <div>
+        <label>Network Services Fees</label>
+        <input type="text" name="network_services_fees" value="{{ confirm_form.network_services_fees.value|default:'' }}">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Fixed Subsidy Amount</label>
+        <input type="text" name="fixed_subsidy_amount" value="{{ confirm_form.fixed_subsidy_amount.value|default:'' }}">
+      </div>
+      <div></div>
+    </div>
+
+    <!-- Hidden OCR metadata -->
+    <input type="hidden" name="ocr_engine" value="{{ confirm_form.ocr_engine.value|default:'' }}">
+    <input type="hidden" name="raw_ocr_text" value="{{ confirm_form.raw_ocr_text.value|default:'' }}">
+
+    <div style="margin-top:16px;">
+      <button type="submit" class="btn">Confirm & Save</button>
+    </div>
+  </form>
+</div>
+{% elif parsed %}
 <div class="card">
   <h3 style="margin-top:0">Parsed preview (electricity)</h3>
-  {% if parsed %}
   <table>
     <tbody>
       <tr><th>Meter</th><td>{{ parsed.meter_number|default:"-" }}</td></tr>
@@ -22,13 +133,18 @@
       <tr><th>Total bill value</th><td>{{ parsed.total_bill_value|default:"-" }}</td></tr>
     </tbody>
   </table>
-  {% else %}
-  <div class="muted">No parser wired for this utility/layout yet.</div>
-  {% endif %}
 </div>
+{% else %}
+<div class="card">
+  <h3 style="margin-top:0">Parsed preview</h3>
+  <div class="muted">No parser wired for this utility/layout yet.</div>
+</div>
+{% endif %}
 
+{% if ocr_text %}
 <div class="card">
   <h3 style="margin-top:0">Raw OCR text</h3>
   <pre>{{ ocr_text }}</pre>
 </div>
+{% endif %}
 {% endblock %}

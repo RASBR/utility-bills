@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import json
+import tempfile
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
@@ -17,6 +19,7 @@ from .forms import (
     DashboardFilterForm,
     ElectricityManualBillForm,
     MeterForm,
+    OcrConfirmElectricityForm,
     OcrUploadForm,
     WaterManualBillForm,
 )
@@ -201,10 +204,9 @@ def ocr_upload(request: HttpRequest) -> HttpResponse:
             engine = form.cleaned_data["engine"]
             files = request.FILES.getlist("images")
 
-            # Save uploads temporarily in-memory-friendly way (local filesystem in Django MEDIA is recommended in real deployments)
-            import tempfile
+            # Save uploads temporarily
             tmpdir = tempfile.mkdtemp(prefix="ub_ocr_")
-            paths = []
+            paths: list[str] = []
             for f in files:
                 p = tmpdir + "/" + f.name
                 with open(p, "wb") as out:
@@ -219,10 +221,30 @@ def ocr_upload(request: HttpRequest) -> HttpResponse:
 
             layout = classify_layout(ocr_res.text)
 
-            # For now, only electricity parser is wired end-to-end (water parser can be added similarly)
+            # Parse and prepare confirmation form
             parsed = None
+            confirm_form = None
             if utility_type == UtilityType.ELECTRICITY:
                 parsed = parse_electricity_text(ocr_res.text)
+                # Pre-populate confirmation form with parsed values
+                initial_data: dict[str, Any] = {
+                    "meter_number": parsed.meter_number or "",
+                    "period_start": parsed.period_start,
+                    "period_end": parsed.period_end,
+                    "reading_date": parsed.reading_date,
+                    "import_previous": parsed.import_previous,
+                    "import_current": parsed.import_current,
+                    "export_previous": parsed.export_previous,
+                    "export_current": parsed.export_current,
+                    "billed_kwh": parsed.billed_kwh,
+                    "total_amount": parsed.total_bill_value,
+                    "consumption_value": parsed.consumption_value,
+                    "network_services_fees": parsed.network_services_fees,
+                    "fixed_subsidy_amount": parsed.fixed_subsidy_amount,
+                    "ocr_engine": ocr_res.engine,
+                    "raw_ocr_text": ocr_res.text,
+                }
+                confirm_form = OcrConfirmElectricityForm(initial=initial_data)
 
             return render(
                 request,
@@ -233,9 +255,84 @@ def ocr_upload(request: HttpRequest) -> HttpResponse:
                     "engine": ocr_res.engine,
                     "layout": layout,
                     "parsed": parsed,
+                    "confirm_form": confirm_form,
+                    "utility_type": utility_type,
                 },
             )
     else:
         form = OcrUploadForm()
 
     return render(request, "utility_bills/ocr_upload.html", {"form": form})
+
+
+@login_required
+def ocr_save(request: HttpRequest) -> HttpResponse:
+    """Save OCR-parsed electricity bill after user confirmation."""
+    if request.method != "POST":
+        return redirect(reverse("utility_bills:ocr_upload"))
+
+    form = OcrConfirmElectricityForm(request.POST)
+    if not form.is_valid():
+        return render(
+            request,
+            "utility_bills/ocr_result.html",
+            {
+                "confirm_form": form,
+                "utility_type": UtilityType.ELECTRICITY,
+                "errors": form.errors,
+            },
+        )
+
+    # Look up meter by meter_number for this user
+    meter_number = form.cleaned_data["meter_number"]
+    try:
+        meter = UtilityMeter.objects.get(
+            user=request.user,
+            utility_type=UtilityType.ELECTRICITY,
+            meter_number=meter_number,
+        )
+        meter_found = True
+    except UtilityMeter.DoesNotExist:
+        # Return error - do NOT auto-create meter
+        return render(
+            request,
+            "utility_bills/ocr_result.html",
+            {
+                "confirm_form": form,
+                "utility_type": UtilityType.ELECTRICITY,
+                "meter_error": f"Meter '{meter_number}' not found. Please add this meter first.",
+            },
+        )
+
+    # Compute needs_review flag
+    needs_review, review_reasons = form.compute_needs_review(meter_found=meter_found)
+
+    # Create UtilityBill
+    bill = UtilityBill.objects.create(
+        user=request.user,
+        meter=meter,
+        utility_type=UtilityType.ELECTRICITY,
+        period_start=form.cleaned_data["period_start"],
+        period_end=form.cleaned_data["period_end"],
+        reading_date=form.cleaned_data.get("reading_date"),
+        total_amount=form.cleaned_data.get("total_amount") or Decimal("0.000"),
+        data_source=DataSource.OCR,
+        ocr_engine=form.cleaned_data.get("ocr_engine", ""),
+        raw_ocr_text=form.cleaned_data.get("raw_ocr_text", ""),
+        needs_review=needs_review,
+    )
+
+    # Create ElectricityBill
+    ElectricityBill.objects.create(
+        bill=bill,
+        import_previous=form.cleaned_data["import_previous"],
+        import_current=form.cleaned_data["import_current"],
+        export_previous=form.cleaned_data.get("export_previous"),
+        export_current=form.cleaned_data.get("export_current"),
+        billed_kwh=form.cleaned_data.get("billed_kwh"),
+        consumption_value=form.cleaned_data.get("consumption_value"),
+        network_services_fees=form.cleaned_data.get("network_services_fees"),
+        fixed_subsidy_amount=form.cleaned_data.get("fixed_subsidy_amount"),
+    )
+
+    return redirect(reverse("utility_bills:bill_detail", kwargs={"bill_id": bill.id}))
