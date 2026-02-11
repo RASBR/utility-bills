@@ -82,7 +82,7 @@ class UtilityBill(models.Model):
             models.Index(fields=["period_end"]),
         ]
         constraints = [
-            models.CheckConstraint(check=models.Q(total_amount__gte=Decimal("-999999999.999")), name="ub_total_amount_reasonable"),
+            models.CheckConstraint(condition=models.Q(total_amount__gte=Decimal("-999999999.999")), name="ub_total_amount_reasonable"),
         ]
 
     def clean(self):
